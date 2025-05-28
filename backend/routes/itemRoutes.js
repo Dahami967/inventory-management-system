@@ -23,6 +23,6 @@ router.put('/:id', updateItem);
 router.delete('/:id', deleteItem);
 
 // Stock management
-router.post('/:id/stock', updateStock);
+router.put('/:id/stock', updateStock);
 
 module.exports = router;

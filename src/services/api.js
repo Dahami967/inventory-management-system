@@ -50,8 +50,8 @@ export const itemService = {
     },
 
     // Update stock
-    updateStock: async (id, stockData) => {
-        const response = await api.post(`/items/${id}/stock`, stockData);
+    updateStock: async (id, updateData) => {
+        const response = await api.put(`/items/${id}/stock`, updateData);
         return response.data;
     }
 };

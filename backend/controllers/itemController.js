@@ -122,16 +122,38 @@ exports.getLowStockItems = async (req, res) => {
 // Update stock
 exports.updateStock = async (req, res) => {
     try {
-        const { id } = req.params;
         const { quantity, type, reason } = req.body;
-        const userId = req.user ? req.user.id : null;
+        const itemId = req.params.id;
 
-        const success = await Item.updateStock(id, quantity, type, reason, userId);
-        if (success) {
-            res.json({ message: 'Stock updated successfully' });
-        } else {
-            res.status(400).json({ message: 'Failed to update stock' });
+        if (!quantity || !type || !reason) {
+            return res.status(400).json({
+                message: 'Missing required fields. Please provide: quantity, type, and reason'
+            });
         }
+
+        const item = await Item.findById(itemId);
+        if (!item) {
+            return res.status(404).json({ message: 'Item not found' });
+        }
+
+        let newQuantity;
+        if (type === 'add') {
+            newQuantity = item.quantity + parseInt(quantity);
+        } else if (type === 'remove') {
+            newQuantity = item.quantity - parseInt(quantity);
+            if (newQuantity < 0) {
+                return res.status(400).json({
+                    message: 'Cannot remove more items than available in stock'
+                });
+            }
+        }
+
+        await Item.updateById(itemId, { quantity: newQuantity });
+
+        res.json({ 
+            message: 'Stock updated successfully',
+            newQuantity
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

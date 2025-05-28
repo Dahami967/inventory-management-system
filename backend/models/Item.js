@@ -51,6 +51,17 @@ class Item {
         return result.affectedRows > 0;
     }
 
+    static async updateById(id, updates) {
+        const fields = Object.keys(updates);
+        const values = Object.values(updates);
+        
+        const setClause = fields.map(field => `${field} = ?`).join(', ');
+        const query = `UPDATE items SET ${setClause} WHERE id = ?`;
+        
+        const [result] = await db.execute(query, [...values, id]);
+        return result.affectedRows > 0;
+    }
+
     static async search(query) {
         const searchPattern = `%${query}%`;
         const [rows] = await db.execute(
