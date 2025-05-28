@@ -90,28 +90,23 @@ const AddItem = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return; // Stop submission if validation fails
+    
+    // Validate form
+    const formErrors = validateForm();
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
+      return;
     }
 
     setLoading(true);
-    setError('');
-
     try {
-      // Format the data for the API
-      const itemData = {
+      await itemService.createItem({
         ...formData,
-        unitPrice: parseFloat(formData.unitPrice),
-        quantity: parseInt(formData.quantity),
-        minimumStock: parseInt(formData.minimumStock),
         purchaseDate: formData.purchaseDate.format('YYYY-MM-DD'),
-      };
-
-      await itemService.createItem(itemData);
+      });
       setOpenSnackbar(true);
-
-      // Reset form after successful submission
+      setError('');
+      // Reset form
       setFormData({
         itemName: '',
         category: '',
@@ -122,14 +117,13 @@ const AddItem = () => {
         supplier: '',
         purchaseDate: dayjs(),
       });
-
-      // Navigate to inventory view after short delay
-      setTimeout(() => {
-        navigate('/view-inventory');
-      }, 2000);
+      navigate('/view-inventory');
     } catch (error) {
-      console.error('Error creating item:', error);
-      setError(error.response?.data?.message || 'Failed to create item');
+      if (error.response?.status === 400 && error.response.data?.message.includes('already exists')) {
+        setError('An item with this name already exists. Please use a different name or update the existing item.');
+      } else {
+        setError(error.response?.data?.message || 'Error creating item');
+      }
     } finally {
       setLoading(false);
     }

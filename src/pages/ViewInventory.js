@@ -6,70 +6,32 @@ import {
   TextField,
   InputAdornment,
   Chip,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import SearchIcon from '@mui/icons-material/Search';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { itemService } from '../services/api';
 import { formatLKR } from '../utils/formatters';
-
-const columns = [
-  {
-    field: 'itemName',
-    headerName: 'Item Name',
-    flex: 1,
-    minWidth: 180,
-  },
-  {
-    field: 'category',
-    headerName: 'Category',
-    flex: 1,
-    minWidth: 130,
-  },
-  {
-    field: 'quantity',
-    headerName: 'Quantity',
-    type: 'number',
-    width: 100,
-  },
-  {
-    field: 'unitPrice',
-    headerName: 'Unit Price (LKR)',
-    type: 'number',
-    flex: 1,
-    minWidth: 130,
-    renderCell: (params) => formatLKR(params.value),
-  },
-  {
-    field: 'supplier',
-    headerName: 'Supplier',
-    flex: 1,
-    minWidth: 150,
-  },
-  {
-    field: 'status',
-    headerName: 'Status',
-    flex: 1,
-    minWidth: 120,
-    renderCell: (params) => (
-      <Chip
-        label={
-          params.row.quantity <= params.row.minimumStock
-            ? 'Low Stock'
-            : 'In Stock'
-        }
-        color={
-          params.row.quantity <= params.row.minimumStock ? 'error' : 'success'
-        }
-        size="small"
-      />
-    ),
-  },
-];
 
 const ViewInventory = () => {
   const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
 
   useEffect(() => {
     fetchItems();
@@ -101,6 +63,99 @@ const ViewInventory = () => {
       console.error('Error searching items:', error);
     }
   };
+
+  const handleDelete = async () => {
+    try {
+      await itemService.deleteItem(itemToDelete.id);
+      setSnackbar({
+        open: true,
+        message: 'Item deleted successfully',
+        severity: 'success',
+      });
+      fetchItems(); // Refresh the list
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || 'Error deleting item',
+        severity: 'error',
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
+    }
+  };
+
+  const columns = [
+    {
+      field: 'itemName',
+      headerName: 'Item Name',
+      flex: 1,
+      minWidth: 180,
+    },
+    {
+      field: 'category',
+      headerName: 'Category',
+      flex: 1,
+      minWidth: 130,
+    },
+    {
+      field: 'quantity',
+      headerName: 'Quantity',
+      type: 'number',
+      width: 100,
+    },
+    {
+      field: 'unitPrice',
+      headerName: 'Unit Price (LKR)',
+      type: 'number',
+      flex: 1,
+      minWidth: 130,
+      renderCell: (params) => formatLKR(params.value),
+    },
+    {
+      field: 'supplier',
+      headerName: 'Supplier',
+      flex: 1,
+      minWidth: 150,
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      flex: 1,
+      minWidth: 120,
+      renderCell: (params) => (
+        <Chip
+          label={
+            params.row.quantity <= params.row.minimumStock
+              ? 'Low Stock'
+              : 'In Stock'
+          }
+          color={
+            params.row.quantity <= params.row.minimumStock ? 'error' : 'success'
+          }
+          size="small"
+        />
+      ),
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 100,
+      sortable: false,
+      renderCell: (params) => (
+        <IconButton
+          color="error"
+          onClick={(e) => {
+            e.stopPropagation();
+            setItemToDelete(params.row);
+            setDeleteDialogOpen(true);
+          }}
+        >
+          <DeleteIcon />
+        </IconButton>
+      ),
+    },
+  ];
 
   return (
     <Box>
@@ -141,6 +196,42 @@ const ViewInventory = () => {
           }}
         />
       </Paper>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete {itemToDelete?.itemName}?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={handleDelete}
+            color="error"
+            variant="contained"
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for feedback */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

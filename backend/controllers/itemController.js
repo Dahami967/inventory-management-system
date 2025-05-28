@@ -35,6 +35,14 @@ exports.createItem = async (req, res) => {
             });
         }
 
+        // Check for duplicate item name
+        const existingItem = await Item.findByName(itemName);
+        if (existingItem) {
+            return res.status(400).json({
+                message: 'An item with this name already exists. Please use a different name or update the existing item.'
+            });
+        }
+
         // Validate numeric fields
         if (isNaN(unitPrice) || unitPrice <= 0) {
             return res.status(400).json({

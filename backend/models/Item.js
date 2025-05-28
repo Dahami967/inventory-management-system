@@ -46,6 +46,11 @@ class Item {
         return result.affectedRows > 0;
     }
 
+    static async findByName(itemName) {
+        const [rows] = await db.execute('SELECT * FROM items WHERE itemName = ?', [itemName]);
+        return rows[0];
+    }
+
     static async delete(id) {
         const [result] = await db.execute('DELETE FROM items WHERE id = ?', [id]);
         return result.affectedRows > 0;
