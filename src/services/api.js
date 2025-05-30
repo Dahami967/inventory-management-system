@@ -55,3 +55,24 @@ export const itemService = {
         return response.data;
     }
 };
+
+export const reportService = {
+    // Get inventory reports
+    getInventoryReports: async (dateRange = 'lastMonth') => {
+        const response = await api.get(`/reports?dateRange=${dateRange}`);
+        return response.data;
+    },
+    
+    // Create a new inventory snapshot
+    createSnapshot: async () => {
+        const response = await api.post('/reports/snapshot');
+        return response.data;
+    },
+    
+    // Get historical inventory snapshots
+    getHistoricalSnapshots: async (startDate, endDate) => {
+        const params = new URLSearchParams({ startDate, endDate });
+        const response = await api.get(`/reports/history?${params}`);
+        return response.data;
+    }
+};

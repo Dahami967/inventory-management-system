@@ -14,6 +14,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/items', require('./routes/itemRoutes'));
+app.use('/api/reports', require('./routes/reportRoutes'));
 
 // Base route for API health check
 app.get('/api/health', (req, res) => {
