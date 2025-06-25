@@ -1,11 +1,14 @@
-const express = require('express');
-const router = express.Router();
-const { getInventoryReports, createSnapshot } = require('../controllers/reportController');
+// routes/reportRoutes.js
+const router = require('express').Router();
+const {
+  getInventoryReports,
+  createSnapshot,
+} = require('../controllers/reportController');
 
-// Get reports
+// GET  /api/reports
 router.get('/', getInventoryReports);
 
-// Create snapshot
+// POST /api/reports/snapshot
 router.post('/snapshot', createSnapshot);
 
 module.exports = router;

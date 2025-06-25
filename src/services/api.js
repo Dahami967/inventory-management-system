@@ -57,22 +57,14 @@ export const itemService = {
 };
 
 export const reportService = {
-    // Get inventory reports
-    getInventoryReports: async (dateRange = 'lastMonth') => {
-        const response = await api.get(`/reports?dateRange=${dateRange}`);
-        return response.data;
-    },
-    
-    // Create a new inventory snapshot
-    createSnapshot: async () => {
-        const response = await api.post('/reports/snapshot');
-        return response.data;
-    },
-    
-    // Get historical inventory snapshots
-    getHistoricalSnapshots: async (startDate, endDate) => {
-        const params = new URLSearchParams({ startDate, endDate });
-        const response = await api.get(`/reports/history?${params}`);
-        return response.data;
-    }
+  getInventoryReports: (dateRange) => {
+    const url = dateRange ? `/reports?dateRange=${dateRange}` : '/reports';
+    return api.get(url).then(r => r.data);
+  },
+
+  createSnapshot: () =>
+    api.post('/reports/snapshot').then(r => r.data),
 };
+
+
+

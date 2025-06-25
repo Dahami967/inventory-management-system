@@ -1,255 +1,167 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Box,
-  Typography,
-  Paper,
-  Grid,
-  MenuItem,
-  TextField,
-  Button,
-  CircularProgress,
+  Box, Typography, Paper, MenuItem, TextField,
+  Button, CircularProgress, Snackbar, Alert, Chip,
 } from '@mui/material';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { DataGrid } from '@mui/x-data-grid';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
+  PieChart, Pie, Cell, Tooltip as ReTooltip,
+  LineChart, Line, CartesianGrid, XAxis, YAxis, Legend,
+  BarChart, Bar,
 } from 'recharts';
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { formatLKR } from '../utils/formatters';
 import { reportService, itemService } from '../services/api';
-import { format, subDays, subMonths, subYears } from 'date-fns';
-import { Chip } from '@mui/material';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-const getDateRange = (range) => {
-  const today = new Date();
-  switch (range) {
-    case 'lastWeek':
-      return { start: format(subDays(today, 7), 'yyyy-MM-dd'), end: format(today, 'yyyy-MM-dd') };
-    case 'lastMonth':
-      return { start: format(subMonths(today, 1), 'yyyy-MM-dd'), end: format(today, 'yyyy-MM-dd') };
-    case 'last3Months':
-      return { start: format(subMonths(today, 3), 'yyyy-MM-dd'), end: format(today, 'yyyy-MM-dd') };
-    case 'lastYear':
-      return { start: format(subYears(today, 1), 'yyyy-MM-dd'), end: format(today, 'yyyy-MM-dd') };
-    default:
-      return { start: format(subMonths(today, 1), 'yyyy-MM-dd'), end: format(today, 'yyyy-MM-dd') };
-  }
-};
-
+// Tooltip component without "type" prop
 const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <Paper sx={{ p: 1 }}>
-        <Typography>{label}</Typography>
-        {payload.map((entry) => (
-          <Typography key={entry.name} sx={{ color: entry.color }}>
-            {entry.name}: {entry.name.includes('Value') ? formatLKR(entry.value) : entry.value}
-          </Typography>
-        ))}
-      </Paper>
-    );
-  }
-  return null;
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <Paper sx={{ p: 1 }}>
+      <Typography variant="subtitle2">{label}</Typography>
+      {payload.map(e => (
+        <Typography key={e.name} sx={{ color: e.color }}>
+          {e.name}: {e.name.includes('Value') ? formatLKR(e.value) : e.value}
+        </Typography>
+      ))}
+    </Paper>
+  );
 };
 
-const Reports = () => {
+const getChartData = (type, stockData, categoryDist) => {
+  switch (type) {
+    case 'stock':
+      return stockData.map(d => ({
+      name: new Date(d.date).toISOString().split('T')[0],
+   'Total Items': d.totalItems, 'Low Stock': d.lowStockItems,
+      }));
+    case 'value':
+      return stockData.map(d => ({
+        name: new Date(d.date).toISOString().split('T')[0],
+ 'Total Value': d.value,
+      }));
+    case 'movement':
+      return stockData.map(d => ({
+        name: new Date(d.date).toISOString().split('T')[0],
+ InStock: d.totalItems, LowStock: d.lowStockItems,
+      }));
+    default:
+      return categoryDist;
+  }
+};
+
+export default function Reports() {
   const [reportType, setReportType] = useState('all');
   const [dateRange, setDateRange] = useState('lastMonth');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState(false);
   const [error, setError] = useState(null);
-  const [data, setData] = useState({
-    stockData: [],
-    categoryDistribution: [],
-    items: []
-  });
+  const [stockData, setStockData] = useState([]);
+  const [catDist, setCatDist] = useState([]);
   const [items, setItems] = useState([]);
 
+  const loadReport = async () => {
+    setLoading(true);
+    try {
+      const res = await reportService.getInventoryReports(
+        reportType === 'items' ? '' : dateRange
+      );
+      setStockData(res?.data?.stockData || []);
+setCatDist(res?.data?.categoryDistribution || []);
+      setError(null);
+    } catch (e) {
+      console.error(e);
+      setError('Unable to load reports');
+      setStockData([]);
+      setCatDist([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadItems = async () => {
+    setLoading(true);
+    try {
+      const list = await itemService.getAllItems();
+      setItems(list.map(i => ({ ...i, id: i.id })));
+      setError(null);
+    } catch (e) {
+      console.error(e);
+      setError('Unable to load items');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (reportType === 'items') loadItems();
+    else loadReport();
+  }, [reportType, dateRange]);
+
+  const handleSnapshot = async () => {
+    setLoading(true);
+    try {
+      await reportService.createSnapshot();
+      setSnackbar(true);
+      if (reportType !== 'items') await loadReport();
+    } catch (e) {
+      console.error(e);
+      setError('Snapshot failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const chartData = useMemo(
+    () => getChartData(reportType, stockData, catDist),
+    [reportType, stockData, catDist]
+  );
+
   const columns = [
-    {
-      field: 'itemName',
-      headerName: 'Item Name',
-      flex: 1,
-      minWidth: 180,
-    },
-    {
-      field: 'category',
-      headerName: 'Category',
-      flex: 1,
-      minWidth: 130,
-    },
-    {
-      field: 'quantity',
-      headerName: 'Quantity',
-      type: 'number',
-      width: 100,
-    },
+    { field: 'itemName', headerName: 'Name', flex: 1 },
+    { field: 'category', headerName: 'Category', flex: 1 },
+    { field: 'quantity', headerName: 'Qty', type: 'number', width: 100 },
     {
       field: 'unitPrice',
       headerName: 'Unit Price (LKR)',
       type: 'number',
       flex: 1,
-      minWidth: 130,
-      renderCell: (params) => formatLKR(params.value),
+      renderCell: ({ value }) => formatLKR(value),
     },
-    {
-      field: 'supplier',
-      headerName: 'Supplier',
-      flex: 1,
-      minWidth: 150,
-    },
+    { field: 'supplier', headerName: 'Supplier', flex: 1 },
     {
       field: 'status',
       headerName: 'Status',
-      flex: 1,
-      minWidth: 120,
-      renderCell: (params) => (
+      renderCell: ({ row }) => (
         <Chip
-          label={
-            params.row.quantity <= params.row.minimumStock
-              ? 'Low Stock'
-              : 'In Stock'
-          }
-          color={
-            params.row.quantity <= params.row.minimumStock ? 'error' : 'success'
-          }
+          label={row.quantity <= row.minimumStock ? 'Low' : 'In Stock'}
+          color={row.quantity <= row.minimumStock ? 'error' : 'success'}
           size="small"
         />
       ),
     },
   ];
-  useEffect(() => {
-    if (reportType === 'items') {
-      fetchItems();
-    } else {
-      fetchReportData();
-    }
-  }, [dateRange, reportType]);  const fetchReportData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const { start, end } = getDateRange(dateRange);
-      
-      // Fetch all types of data needed for reports
-      const [reportResponse, itemsData] = await Promise.all([
-        reportService.getInventoryReports(dateRange),
-        itemService.getAllItems()
-      ]);
-      
-      // Process data for category distribution
-      const categoryMap = {};
-      itemsData.forEach(item => {
-        categoryMap[item.category] = (categoryMap[item.category] || 0) + item.quantity;
-      });
-      
-      const categoryDistribution = Object.entries(categoryMap).map(([name, value]) => ({
-        name,
-        value
-      }));
-      
-      // Set all data
-      setData({
-        stockData: reportResponse.stockData || [],
-        categoryDistribution,
-        items: itemsData
-      });
-      
-      console.log('Report data processed:', categoryDistribution); // For debugging
-    } catch (err) {
-      console.error('Error fetching reports:', err);
-      setError('Failed to fetch report data. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-  const fetchItems = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const itemsData = await itemService.getAllItems();
-      
-      // Add an id field if it doesn't exist
-      const itemsWithId = itemsData.map(item => ({
-        ...item,
-        id: item.id || Math.random().toString(36).substr(2, 9)
-      }));
-      
-      setItems(itemsWithId);
-    } catch (err) {
-      console.error('Error fetching items:', err);
-      setError('Failed to fetch items data. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      setLoading(true);
-      await reportService.createSnapshot();
-      await fetchReportData();
-    } catch (error) {
-      console.error('Error creating snapshot:', error);
-      setError('Failed to create snapshot. Please try again.');
-    }
-  };
-
-  const getChartData = () => {
-    if (!data || !data.stockData) return [];
-
-    switch (reportType) {
-      case 'stock':
-        return data.stockData.map(item => ({
-          name: new Date(item.date).toLocaleDateString(),
-          totalItems: item.totalItems,
-          lowStockItems: item.lowStockItems
-        }));
-      case 'value':
-        return data.stockData.map(item => ({
-          name: new Date(item.date).toLocaleDateString(),
-          value: item.value
-        }));
-      case 'movement':
-        return data.stockData.map(item => ({
-          name: new Date(item.date).toLocaleDateString(),
-          inStock: item.totalItems,
-          lowStock: item.lowStockItems
-        }));
-      case 'all':
-      default:
-        return data.categoryDistribution;
-    }
-  };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <Box sx={{ mt: 10, textAlign: 'center' }}>
         <CircularProgress />
       </Box>
     );
   }
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
-        <Typography variant="h4">Reports</Typography>
+    <Box sx={{ p: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+        <Typography variant="h4">Inventory Reports</Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <TextField
             select
             label="Report Type"
-            value={reportType}            onChange={(e) => setReportType(e.target.value)}
-            sx={{ width: 200 }}
+            value={reportType}
+            onChange={e => setReportType(e.target.value)}
           >
             <MenuItem value="all">Category Distribution</MenuItem>
             <MenuItem value="stock">Stock Levels</MenuItem>
@@ -257,193 +169,127 @@ const Reports = () => {
             <MenuItem value="movement">Stock Movement</MenuItem>
             <MenuItem value="items">All Items</MenuItem>
           </TextField>
-          <TextField
-            select
-            label="Date Range"
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            sx={{ width: 200 }}
-          >
-            <MenuItem value="lastWeek">Last Week</MenuItem>
-            <MenuItem value="lastMonth">Last Month</MenuItem>
-            <MenuItem value="last3Months">Last 3 Months</MenuItem>
-            <MenuItem value="lastYear">Last Year</MenuItem>
-          </TextField>
+
+          {reportType !== 'items' && (
+            <TextField
+              select
+              label="Date Range"
+              value={dateRange}
+              onChange={e => setDateRange(e.target.value)}
+            >
+              <MenuItem value="lastWeek">Last Week</MenuItem>
+              <MenuItem value="lastMonth">Last Month</MenuItem>
+              <MenuItem value="last3Months">Last 3 Months</MenuItem>
+              <MenuItem value="lastYear">Last Year</MenuItem>
+              <MenuItem value="">All Time</MenuItem>
+            </TextField>
+          )}
+
           <Button
             variant="contained"
             startIcon={<FileDownloadIcon />}
-            onClick={handleExport}
+            onClick={handleSnapshot}
           >
-            Create Snapshot
+            Snapshot
           </Button>
         </Box>
       </Box>
 
-      {error ? (
-        <Paper sx={{ p: 3, textAlign: 'center' }}>
-          <Typography color="error">{error}</Typography>
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {reportType === 'items' ? (
+        <Paper sx={{ height: 600 }}>
+          <DataGrid
+            rows={items}
+            columns={columns}
+            pageSize={10}
+            rowsPerPageOptions={[10, 25, 50]}
+          />
         </Paper>
       ) : (
-        <Grid container spacing={3}>          {reportType === 'all' && (
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Stock Distribution by Category
+        <>
+          {reportType === 'all' && catDist.length > 0 && (
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6">Categories</Typography>
+              <PieChart width={400} height={300}>
+                <Pie
+                  data={chartData}
+                  dataKey="value"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  label
+                >
+                  {chartData.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <ReTooltip content={<CustomTooltip />} />
+              </PieChart>
+            </Paper>
+          )}
+
+          {['stock', 'value', 'movement'].includes(reportType) &&
+            stockData.length > 0 && (
+              <Paper sx={{ p: 2 }}>
+                <Typography variant="h6">
+                  {reportType === 'stock'
+                    ? 'Stock Levels'
+                    : reportType === 'value'
+                    ? 'Inventory Value'
+                    : 'Stock Movement'}
                 </Typography>
-                {data.categoryDistribution && data.categoryDistribution.length > 0 ? (
-                  <PieChart width={400} height={300}>
-                    <Pie
-                      data={data.categoryDistribution}
-                      cx={200}
-                      cy={150}
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {data.categoryDistribution.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                ) : (
-                  <Typography align="center">No category distribution data available</Typography>
+
+                {reportType === 'stock' && (
+                  <LineChart width={800} height={300} data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <ReTooltip content={<CustomTooltip />} />
+                    <Legend />
+                    <Line type="monotone" dataKey="Total Items" stroke="#8884d8" />
+                    <Line type="monotone" dataKey="Low Stock" stroke="#82ca9d" />
+                  </LineChart>
+                )}
+
+                {reportType === 'value' && (
+                  <LineChart width={800} height={300} data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis tickFormatter={formatLKR} />
+                    <ReTooltip content={<CustomTooltip />} />
+                    <Legend />
+                    <Line type="monotone" dataKey="Total Value" stroke="#8884d8" />
+                  </LineChart>
+                )}
+
+                {reportType === 'movement' && (
+                  <BarChart width={800} height={300} data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <ReTooltip content={<CustomTooltip />} />
+                    <Legend />
+                    <Bar dataKey="InStock" fill="#8884d8" />
+                    <Bar dataKey="LowStock" fill="#82ca9d" />
+                  </BarChart>
                 )}
               </Paper>
-            </Grid>
-          )}
+            )}
 
-          {reportType === 'movement' && data.stockData && data.stockData.length > 0 && (
-            <Grid item xs={12}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Stock Movement Trend
-                </Typography>
-                <BarChart
-                  width={900}
-                  height={300}
-                  data={getChartData()}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  <Bar dataKey="inStock" fill="#8884d8" name="In Stock" />
-                  <Bar dataKey="lowStock" fill="#82ca9d" name="Low Stock" />
-                </BarChart>
-              </Paper>
-            </Grid>
+          {chartData.length === 0 && (
+            <Typography align="center">No data to display</Typography>
           )}
-
-          {reportType === 'value' && data.stockData && data.stockData.length > 0 && (
-            <Grid item xs={12}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Total Inventory Value Trend
-                </Typography>
-                <LineChart
-                  width={900}
-                  height={300}
-                  data={getChartData()}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis tickFormatter={(value) => formatLKR(value)} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#8884d8"
-                    name="Total Value (LKR)"
-                  />
-                </LineChart>
-              </Paper>
-            </Grid>
-          )}
-
-          {reportType === 'stock' && data.stockData && data.stockData.length > 0 && (
-            <Grid item xs={12}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Stock Levels Trend
-                </Typography>
-                <LineChart
-                  width={900}
-                  height={300}
-                  data={getChartData()}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="totalItems"
-                    stroke="#8884d8"
-                    name="Total Items"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="lowStockItems"
-                    stroke="#82ca9d"
-                    name="Low Stock Items"
-                  />
-                </LineChart>
-              </Paper>
-            </Grid>          )}
-
-          {reportType === 'items' && (
-            <Grid item xs={12}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  All Items Report
-                </Typography>
-                <Box sx={{ height: 600 }}>
-                  <DataGrid
-                    rows={items}
-                    columns={columns}
-                    pageSize={10}
-                    rowsPerPageOptions={[10, 25, 50]}
-                    checkboxSelection
-                    disableSelectionOnClick
-                    loading={loading}
-                    sx={{
-                      '& .MuiDataGrid-cell:focus': {
-                        outline: 'none',
-                      },
-                    }}
-                  />
-                </Box>
-              </Paper>
-            </Grid>
-          )}
-
-          {(!data.stockData || data.stockData.length === 0) && 
-           (!data.categoryDistribution || data.categoryDistribution.length === 0) && 
-           reportType !== 'items' && (
-            <Grid item xs={12}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" align="center">
-                  No data available for the selected time period
-                </Typography>
-              </Paper>
-            </Grid>
-          )}
-        </Grid>
+        </>
       )}
+
+      <Snackbar
+        open={snackbar}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar(false)}
+      >
+        <Alert severity="success">Snapshot created!</Alert>
+      </Snackbar>
     </Box>
   );
-};
-
-export default Reports;
+}

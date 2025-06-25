@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const errorHandler = require('./middleware/errorHandler');
 
+
 // Load env vars
 dotenv.config();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 // Routes
 app.use('/api/items', require('./routes/itemRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
+app.use('/api/auth', require('./routes/auth'));
 
 // Base route for API health check
 app.get('/api/health', (req, res) => {

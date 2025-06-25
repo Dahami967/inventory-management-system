@@ -2,6 +2,8 @@ import React from 'react';
 import { Box, CssBaseline } from '@mui/material';
 import Sidebar from './Sidebar';
 
+
+
 const Layout = ({ children }) => {
   return (
     <Box sx={{ display: 'flex' }}>
