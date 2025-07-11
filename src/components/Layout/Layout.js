@@ -1,10 +1,17 @@
 import React from 'react';
-import { Box, CssBaseline } from '@mui/material';
+import { Box, CssBaseline, Button } from '@mui/material';
 import Sidebar from './Sidebar';
-
-
+import { useNavigate } from 'react-router-dom';
 
 const Layout = ({ children }) => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
+
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
@@ -18,6 +25,11 @@ const Layout = ({ children }) => {
           minHeight: '100vh',
         }}
       >
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Button variant="outlined" color="error" onClick={handleLogout}>
+            Logout
+          </Button>
+        </Box>
         {children}
       </Box>
     </Box>

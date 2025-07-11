@@ -2,34 +2,74 @@ const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-exports.signup = (req, res) => {
-  const { username, password } = req.body;
-  const hashedPassword = bcrypt.hashSync(password, 10);
-  const sql = 'INSERT INTO users (username, password) VALUES (?, ?)';
+exports.registerUser = async (req, res) => {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: 'All fields are required.' });
+  }
 
-  db.query(sql, [username, hashedPassword], (err) => {
-    if (err) return res.status(500).json({ message: 'Signup failed', error: err });
-    res.status(201).json({ message: 'User registered successfully' });
-  });
+  try {
+    // Check if user already exists
+    const [existing] = await db.query('SELECT * FROM users WHERE username = ?', [email]);
+    if (existing.length > 0) {
+      return res.status(409).json({ message: 'User already exists.' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insert user
+    await db.query(
+      'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+      [email, hashedPassword, 'user']
+    );
+
+    res.status(201).json({ message: 'User registered successfully.' });
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ message: 'Server error during registration.' });
+  }
 };
 
-exports.login = (req, res) => {
-  const { username, password } = req.body;
-  const sql = 'SELECT * FROM users WHERE username = ?';
+exports.loginUser = async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required.' });
+  }
 
-  db.query(sql, [username], (err, results) => {
-    if (err) return res.status(500).json({ message: 'Login error' });
-    if (results.length === 0) return res.status(404).json({ message: 'User not found' });
+  try {
+    // Find user by email
+    const [users] = await db.query('SELECT * FROM users WHERE username = ?', [email]);
+    if (users.length === 0) {
+      return res.status(401).json({ message: 'Invalid email or password.' });
+    }
+    const user = users[0];
 
-    const user = results[0];
-    const isValid = bcrypt.compareSync(password, user.password);
-    if (!isValid) return res.status(401).json({ message: 'Invalid credentials' });
+    // Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid email or password.' });
+    }
 
-    const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, {
-      expiresIn: '1d',
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id, email: user.username, role: user.role },
+      process.env.JWT_SECRET || 'your_jwt_secret',
+      { expiresIn: '1d' }
+    );
+
+    // Return token and user info (without password)
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.username,
+        role: user.role,
+        createdAt: user.createdAt
+      }
     });
-
-    res.json({ token });
-  });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Server error during login.' });
+  }
 };
-
