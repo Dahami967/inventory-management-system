@@ -1,6 +1,11 @@
 const db = require('../config/db');
 
 class Item {
+    // Get sum of quantity for each item name
+    static async getStockSummary() {
+        const [rows] = await db.execute('SELECT itemName, SUM(quantity) as totalQuantity FROM items GROUP BY itemName');
+        return rows;
+    }
     static async findAll() {
         const [rows] = await db.execute('SELECT * FROM items');
         return rows;

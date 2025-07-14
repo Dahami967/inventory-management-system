@@ -4,7 +4,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import ReceivingItems from "./pages/ReceivingItems";
-import UpdateStock from "./pages/UpdateStock";
+import Stock from "./pages/Stock";
 import ViewInventory from "./pages/ViewInventory";
 import Reports from "./pages/Reports";
 import Alerts from "./pages/Alerts";
@@ -49,7 +49,7 @@ function App() {
         } />
         <Route path="/update-stock" element={
           <ProtectedRoute>
-            <Layout><UpdateStock /></Layout>
+            <Layout><Stock /></Layout>
           </ProtectedRoute>
         } />
         <Route path="/view-inventory" element={

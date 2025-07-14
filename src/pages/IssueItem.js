@@ -20,12 +20,13 @@ import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { useNavigate } from 'react-router-dom';
 import { itemService, issueService } from '../services/api';
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
+import axios from 'axios';
 
 const IssueItem = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [formData, setFormData] = useState({
-    itemId: '',
+    itemName: '',
     quantity: '',
     notes: '',
     issueDate: new Date()
@@ -35,15 +36,16 @@ const IssueItem = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchItems();
+    fetchStockSummary();
     // eslint-disable-next-line
   }, []);
 
-  const fetchItems = async () => {
+  const fetchStockSummary = async () => {
     setLoading(true);
     try {
-      const items = await itemService.getAllItems();
-      setItems(items.filter(item => item.quantity > 0));
+      const response = await axios.get('http://localhost:5000/api/items/stock-summary');
+      // Only show items with stock > 0
+      setItems(response.data.filter(item => item.totalQuantity > 0));
     } catch (error) {
       setAlert({
         open: true,
@@ -58,15 +60,15 @@ const IssueItem = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    if (name === 'itemId') {
-      const selected = items.find(item => item.id === value);
+    if (name === 'itemName') {
+      const selected = items.find(item => item.itemName === value);
       setSelectedItem(selected);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.itemId || !formData.quantity) {
+    if (!formData.itemName || !formData.quantity) {
       setAlert({
         open: true,
         message: 'Please fill all required fields',
@@ -74,7 +76,7 @@ const IssueItem = () => {
       });
       return;
     }
-    if (selectedItem && Number(formData.quantity) > selectedItem.quantity) {
+    if (selectedItem && Number(formData.quantity) > selectedItem.totalQuantity) {
       setAlert({
         open: true,
         message: 'Requested quantity exceeds available stock',
@@ -84,20 +86,25 @@ const IssueItem = () => {
     }
     setLoading(true);
     try {
-      await issueService.issueItem(formData);
+      await issueService.issueItem({
+        itemId: formData.itemName, // send as itemId for backend compatibility
+        quantity: formData.quantity,
+        notes: formData.notes,
+        issueDate: formData.issueDate
+      });
       setAlert({
         open: true,
         message: 'Item issued successfully',
         severity: 'success'
       });
       setFormData({
-        itemId: '',
+        itemName: '',
         quantity: '',
         notes: '',
         issueDate: new Date()
       });
       setSelectedItem(null);
-      fetchItems();
+      fetchStockSummary();
     } catch (error) {
       setAlert({
         open: true,
@@ -125,16 +132,16 @@ const IssueItem = () => {
               <FormControl fullWidth required>
                 <InputLabel>Select Item</InputLabel>
                 <Select
-                  name="itemId"
-                  value={formData.itemId}
+                  name="itemName"
+                  value={formData.itemName}
                   onChange={handleChange}
                   label="Select Item"
                   disabled={loading}
                 >
                   {items.length === 0 && <MenuItem value="">No items in stock</MenuItem>}
                   {items.map((item) => (
-                    <MenuItem key={item.id} value={item.id}>
-                      {item.itemName} (In Stock: {item.quantity})
+                    <MenuItem key={item.itemName} value={item.itemName}>
+                      {item.itemName} (In Stock: {item.totalQuantity})
                     </MenuItem>
                   ))}
                 </Select>
@@ -148,9 +155,9 @@ const IssueItem = () => {
                 name="quantity"
                 value={formData.quantity}
                 onChange={handleChange}
-                inputProps={{ min: 1, max: selectedItem?.quantity || 1 }}
+                inputProps={{ min: 1, max: selectedItem?.totalQuantity || 1 }}
                 required
-                disabled={loading || !formData.itemId}
+                disabled={loading || !formData.itemName}
               />
             </Grid>
             <Grid item xs={12} sm={6}>

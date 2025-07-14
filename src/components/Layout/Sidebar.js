@@ -14,7 +14,7 @@ const drawerWidth = 240;
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Receive Item', icon: <AddCircleIcon />, path: '/add-item' },
-  { text: 'Update Stock', icon: <UpdateIcon />, path: '/update-stock' },
+  { text: 'Stock', icon: <UpdateIcon />, path: '/update-stock' },
   { text: 'Issue Item', icon: <AssignmentReturnIcon />, path: '/issue-item' },
   { text: 'View Inventory', icon: <InventoryIcon />, path: '/view-inventory' },
   { text: 'Reports', icon: <AssessmentIcon />, path: '/reports' },

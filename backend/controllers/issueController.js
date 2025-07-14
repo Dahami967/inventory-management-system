@@ -2,59 +2,66 @@ const db = require('../config/db');
 
 exports.issueItem = async (req, res) => {
 
+
     const { itemId, quantity, notes } = req.body;
     const issuedBy = req.user.id; // From JWT token
 
     if (!itemId || !quantity) {
-        return res.status(400).json({ message: 'Item ID and quantity are required.' });
+        return res.status(400).json({ message: 'Item name and quantity are required.' });
     }
+
 
     const connection = await db.getConnection();
     try {
         await connection.beginTransaction();
 
-        // Check if item exists and has sufficient quantity
+        // Find all items with the given name and quantity > 0, order by id (FIFO)
         const [items] = await connection.query(
-            'SELECT id, quantity, itemName FROM items WHERE id = ? AND quantity >= ?',
-            [itemId, quantity]
+            'SELECT id, quantity FROM items WHERE itemName = ? AND quantity > 0 ORDER BY id',
+            [itemId]
         );
 
-        if (items.length === 0) {
+        const totalAvailable = items.reduce((sum, item) => sum + item.quantity, 0);
+        if (totalAvailable < quantity) {
             await connection.rollback();
-            return res.status(404).json({ 
-                message: 'Item not found or insufficient quantity available.' 
+            return res.status(404).json({
+                message: 'Item not found or insufficient quantity available.'
             });
         }
 
-        const item = items[0];
+        let qtyToIssue = Number(quantity);
+        let issuedItemIds = [];
+        for (const item of items) {
+            if (qtyToIssue <= 0) break;
+            const deduct = Math.min(item.quantity, qtyToIssue);
+            // Update item quantity
+            await connection.query(
+                'UPDATE items SET quantity = quantity - ? WHERE id = ?',
+                [deduct, item.id]
+            );
+            // Record in stock history
+            await connection.query(
+                `INSERT INTO stock_history (itemId, quantity, type, reason, updatedBy) 
+                 VALUES (?, ?, 'out', ?, ?)`,
+                [item.id, deduct, 'Issued', issuedBy]
+            );
+            issuedItemIds.push({ id: item.id, qty: deduct });
+            qtyToIssue -= deduct;
+        }
 
-
-        // Create issue record
+        // Create issue record for the first item (for tracking)
         const [issueResult] = await connection.query(
             `INSERT INTO issued_items (itemId, quantity, issueDate, issuedBy, notes) 
              VALUES (?, ?, CURDATE(), ?, ?)`,
-            [itemId, quantity, issuedBy, notes]
-        );
-
-        // Update item quantity
-        await connection.query(
-            'UPDATE items SET quantity = quantity - ? WHERE id = ?',
-            [quantity, itemId]
-        );
-
-
-        // Record in stock history
-        await connection.query(
-            `INSERT INTO stock_history (itemId, quantity, type, reason, updatedBy) 
-             VALUES (?, ?, 'out', ?, ?)`,
-            [itemId, quantity, 'Issued', issuedBy]
+            [items[0].id, quantity, issuedBy, notes]
         );
 
         await connection.commit();
 
         res.status(201).json({
             message: 'Item issued successfully',
-            issueId: issueResult.insertId
+            issueId: issueResult.insertId,
+            issuedItemIds
         });
 
     } catch (error) {

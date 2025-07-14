@@ -15,6 +15,9 @@ const {
 router.get('/', getItems);
 router.get('/search', searchItems);
 router.get('/low-stock', getLowStockItems);
+// Stock summary (sum of quantities for each item name)
+const { getStockSummary } = require('../controllers/itemController');
+router.get('/stock-summary', getStockSummary);
 
 // CRUD operations
 router.get('/:id', getItem);

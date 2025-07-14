@@ -1,3 +1,12 @@
+// Get stock summary (sum of quantity for each item name)
+exports.getStockSummary = async (req, res) => {
+    try {
+        const summary = await Item.getStockSummary();
+        res.json(summary);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
 const Item = require('../models/Item');
 
 // Get all items
