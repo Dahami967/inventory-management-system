@@ -3,7 +3,7 @@ import Layout from "./components/Layout/Layout";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
-import AddItem from "./pages/AddItem";
+import ReceivingItems from "./pages/ReceivingItems";
 import UpdateStock from "./pages/UpdateStock";
 import ViewInventory from "./pages/ViewInventory";
 import Reports from "./pages/Reports";
@@ -44,7 +44,7 @@ function App() {
         } />
         <Route path="/add-item" element={
           <ProtectedRoute>
-            <Layout><AddItem /></Layout>
+            <Layout><ReceivingItems /></Layout>
           </ProtectedRoute>
         } />
         <Route path="/update-stock" element={

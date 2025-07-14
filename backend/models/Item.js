@@ -13,11 +13,10 @@ class Item {
 
     static async create(item) {
         const [result] = await db.execute(
-            'INSERT INTO items (itemName, category, description, unitPrice, quantity, minimumStock, supplier, purchaseDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO items (itemName, category, unitPrice, quantity, minimumStock, supplier, purchaseDate) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
                 item.itemName,
                 item.category,
-                item.description || null,
                 item.unitPrice,
                 item.quantity,
                 item.minimumStock,
@@ -30,11 +29,10 @@ class Item {
 
     static async update(id, item) {
         const [result] = await db.execute(
-            'UPDATE items SET itemName = ?, category = ?, description = ?, unitPrice = ?, quantity = ?, minimumStock = ?, supplier = ?, purchaseDate = ? WHERE id = ?',
+            'UPDATE items SET itemName = ?, category = ?, unitPrice = ?, quantity = ?, minimumStock = ?, supplier = ?, purchaseDate = ? WHERE id = ?',
             [
                 item.itemName,
                 item.category,
-                item.description || null,
                 item.unitPrice,
                 item.quantity,
                 item.minimumStock,

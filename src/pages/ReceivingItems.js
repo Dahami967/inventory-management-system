@@ -9,6 +9,7 @@ import {
   MenuItem,
   Snackbar,
   Alert,
+  Divider
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers';
 import SaveIcon from '@mui/icons-material/Save';
@@ -24,12 +25,11 @@ const categories = [
   'Other',
 ];
 
-const AddItem = () => {
+const ReceivingItems = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     itemName: '',
     category: '',
-    description: '',
     unitPrice: '',
     quantity: '',
     minimumStock: '',
@@ -44,27 +44,21 @@ const AddItem = () => {
 
   const validateForm = () => {
     const newErrors = {};
-
     if (!formData.itemName.trim()) newErrors.itemName = 'Item name is required';
     if (!formData.category) newErrors.category = 'Category is required';
-
     const unitPrice = parseFloat(formData.unitPrice);
     if (isNaN(unitPrice) || unitPrice <= 0) {
       newErrors.unitPrice = 'Enter a valid price greater than 0';
     }
-
     const quantity = parseInt(formData.quantity);
     if (isNaN(quantity) || quantity < 0) {
       newErrors.quantity = 'Enter a valid quantity (0 or greater)';
     }
-
     const minimumStock = parseInt(formData.minimumStock);
     if (isNaN(minimumStock) || minimumStock < 0) {
       newErrors.minimumStock = 'Enter a valid minimum stock (0 or greater)';
     }
-
     if (!formData.supplier.trim()) newErrors.supplier = 'Supplier is required';
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -75,7 +69,6 @@ const AddItem = () => {
       ...prev,
       [name]: value,
     }));
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
@@ -90,14 +83,7 @@ const AddItem = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate form
-    const formErrors = validateForm();
-    if (Object.keys(formErrors).length > 0) {
-      setErrors(formErrors);
-      return;
-    }
-
+    if (!validateForm()) return;
     setLoading(true);
     try {
       await itemService.createItem({
@@ -106,11 +92,9 @@ const AddItem = () => {
       });
       setOpenSnackbar(true);
       setError('');
-      // Reset form
       setFormData({
         itemName: '',
         category: '',
-        description: '',
         unitPrice: '',
         quantity: '',
         minimumStock: '',
@@ -119,11 +103,7 @@ const AddItem = () => {
       });
       navigate('/view-inventory');
     } catch (error) {
-      if (error.response?.status === 400 && error.response.data?.message.includes('already exists')) {
-        setError('An item with this name already exists. Please use a different name or update the existing item.');
-      } else {
-        setError(error.response?.data?.message || 'Error creating item');
-      }
+      setError(error.response?.data?.message || 'Error creating item');
     } finally {
       setLoading(false);
     }
@@ -131,12 +111,12 @@ const AddItem = () => {
 
   return (
     <Box>
-      <Paper elevation={3} sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
-        <Typography variant="h5" gutterBottom>
-          Add New Item
+      <Paper elevation={3} sx={{ p: 3, maxWidth: 700, mx: 'auto', borderRadius: 3 }}>
+        <Typography variant="h5" gutterBottom color="primary" fontWeight={600}>
+          Receive New Inventory Item
         </Typography>
-        
-        <form onSubmit={handleSubmit}>
+        <Divider sx={{ mb: 2 }} />
+        <form onSubmit={handleSubmit} autoComplete="off">
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
               <TextField
@@ -150,7 +130,6 @@ const AddItem = () => {
                 required
               />
             </Grid>
-            
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
@@ -170,19 +149,6 @@ const AddItem = () => {
                 ))}
               </TextField>
             </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={3}
-                label="Description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-              />
-            </Grid>
-
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
@@ -199,7 +165,6 @@ const AddItem = () => {
                 required
               />
             </Grid>
-
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
@@ -216,7 +181,6 @@ const AddItem = () => {
                 required
               />
             </Grid>
-
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
@@ -233,7 +197,6 @@ const AddItem = () => {
                 required
               />
             </Grid>
-
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
@@ -246,7 +209,6 @@ const AddItem = () => {
                 required
               />
             </Grid>
-
             <Grid item xs={12} sm={6}>
               <DatePicker
                 label="Purchase Date"
@@ -256,7 +218,6 @@ const AddItem = () => {
                 maxDate={dayjs()}
               />
             </Grid>
-
             <Grid item xs={12}>
               <Button
                 type="submit"
@@ -266,13 +227,12 @@ const AddItem = () => {
                 disabled={loading}
                 fullWidth
               >
-                {loading ? 'Saving...' : 'Save Item'}
+                {loading ? 'Saving...' : 'Receive Item'}
               </Button>
             </Grid>
           </Grid>
         </form>
       </Paper>
-
       <Snackbar
         open={openSnackbar}
         autoHideDuration={6000}
@@ -283,10 +243,9 @@ const AddItem = () => {
           severity="success"
           sx={{ width: '100%' }}
         >
-          Item added successfully!
+          Item received successfully!
         </Alert>
       </Snackbar>
-
       {error && (
         <Snackbar
           open={!!error}
@@ -306,4 +265,4 @@ const AddItem = () => {
   );
 };
 
-export default AddItem;
+export default ReceivingItems;
