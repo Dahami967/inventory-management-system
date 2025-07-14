@@ -8,6 +8,7 @@ import UpdateStock from "./pages/UpdateStock";
 import ViewInventory from "./pages/ViewInventory";
 import Reports from "./pages/Reports";
 import Alerts from "./pages/Alerts";
+import IssueItem from "./pages/IssueItem";
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -64,6 +65,11 @@ function App() {
         <Route path="/alerts" element={
           <ProtectedRoute>
             <Layout><Alerts /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/issue-item" element={
+          <ProtectedRoute>
+            <Layout><IssueItem /></Layout>
           </ProtectedRoute>
         } />
 

@@ -3,6 +3,7 @@ CREATE DATABASE IF NOT EXISTS inventory_system;
 USE inventory_system;
 
 -- Drop tables if they exist to avoid errors
+DROP TABLE IF EXISTS issued_items;
 DROP TABLE IF EXISTS stock_history;
 DROP TABLE IF EXISTS items;
 DROP TABLE IF EXISTS users;
@@ -47,4 +48,19 @@ CREATE TABLE stock_history (
     FOREIGN KEY (updatedBy) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_itemId (itemId),
     INDEX idx_type (type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create issued_items table
+CREATE TABLE issued_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    itemId INT NOT NULL,
+    quantity INT NOT NULL,
+    issueDate DATE NOT NULL,
+    issuedBy INT NOT NULL,
+    notes TEXT,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (itemId) REFERENCES items(id) ON DELETE RESTRICT,
+    FOREIGN KEY (issuedBy) REFERENCES users(id) ON DELETE RESTRICT,
+    INDEX idx_itemId (itemId),
+    INDEX idx_issueDate (issueDate)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

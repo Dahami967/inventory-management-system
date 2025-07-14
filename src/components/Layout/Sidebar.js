@@ -7,6 +7,7 @@ import UpdateIcon from '@mui/icons-material/Update';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
 
 const drawerWidth = 240;
 
@@ -14,6 +15,7 @@ const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Add Item', icon: <AddCircleIcon />, path: '/add-item' },
   { text: 'Update Stock', icon: <UpdateIcon />, path: '/update-stock' },
+  { text: 'Issue Item', icon: <AssignmentReturnIcon />, path: '/issue-item' },
   { text: 'View Inventory', icon: <InventoryIcon />, path: '/view-inventory' },
   { text: 'Reports', icon: <AssessmentIcon />, path: '/reports' },
   { text: 'Alerts', icon: <NotificationsActiveIcon />, path: '/alerts' },
