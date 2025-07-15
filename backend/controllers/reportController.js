@@ -60,7 +60,7 @@ function processReportData(reports) {
   return { stockData, categoryDistribution };
 }
 
-// ✅ Reusable internal snapshot function (for API and internal use)
+// Reusable internal snapshot function (for API and internal use)
 const takeInventorySnapshot = async () => {
   const [items] = await db.query('SELECT * FROM items');
 
@@ -86,7 +86,7 @@ const takeInventorySnapshot = async () => {
   );
 };
 
-// ✅ Public API endpoint: /api/reports/snapshot
+// Public API endpoint: /api/reports/snapshot
 const createSnapshot = async (req, res) => {
   try {
     await takeInventorySnapshot();
@@ -97,17 +97,39 @@ const createSnapshot = async (req, res) => {
   }
 };
 
-// ✅ Public API endpoint: /api/reports
+// Public API endpoint: /api/reports
 const getInventoryReports = async (req, res) => {
   try {
     const dateRange = req.query.dateRange || '';
 
-    let stockData = [];
-    let categoryDistribution = [];
+    // Get current items with their details
+    const [items] = await db.query('SELECT id, itemName, category, quantity FROM items');
+    
+    // Group items by category with full item details
+    const categoryMap = {};
+    items.forEach(item => {
+      if (!categoryMap[item.category]) {
+        categoryMap[item.category] = {
+          name: item.category,
+          value: 0, // Total quantity in category
+          items: [] // Array to store item details
+        };
+      }
+      categoryMap[item.category].value += item.quantity;
+      categoryMap[item.category].items.push({
+        id: item.id,
+        name: item.itemName,
+        quantity: item.quantity
+      });
+    });
 
+    const categoryDistribution = Object.values(categoryMap)
+      .sort((a, b) => b.value - a.value);
+
+    let stockData = [];
     if (dateRange === '') {
       const [reports] = await db.query('SELECT * FROM inventory_history ORDER BY date ASC');
-      ({ stockData, categoryDistribution } = processReportData(reports));
+      ({ stockData } = processReportData(reports));
     } else {
       const { fromDate, toDate } = getDateRangeFromString(dateRange);
       if (!fromDate || !toDate) {
@@ -118,7 +140,7 @@ const getInventoryReports = async (req, res) => {
         'SELECT * FROM inventory_history WHERE date BETWEEN ? AND ? ORDER BY date ASC',
         [fromDate, toDate]
       );
-      ({ stockData, categoryDistribution } = processReportData(reports));
+      ({ stockData } = processReportData(reports));
     }
 
     res.json({
@@ -133,7 +155,7 @@ const getInventoryReports = async (req, res) => {
   }
 };
 
-// ✅ Optional export for other controllers (e.g., createItem)
+// Optional export for other controllers (e.g., createItem)
 module.exports = {
   getInventoryReports,
   createSnapshot,

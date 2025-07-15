@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Typography, Paper, MenuItem, TextField,
   Button, CircularProgress, Snackbar, Alert, Chip,
+  List, ListItem, ListItemText, Divider,
 } from '@mui/material';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { DataGrid } from '@mui/x-data-grid';
@@ -209,24 +210,53 @@ setCatDist(res?.data?.categoryDistribution || []);
       ) : (
         <>
           {reportType === 'all' && catDist.length > 0 && (
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6">Categories</Typography>
-              <PieChart width={400} height={300}>
-                <Pie
-                  data={chartData}
-                  dataKey="value"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label
-                >
-                  {chartData.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            <Box sx={{ display: 'flex', gap: 3 }}>
+              <Paper sx={{ p: 2, width: '40%' }}>
+                <Typography variant="h6" gutterBottom>Categories Distribution</Typography>
+                <PieChart width={400} height={300}>
+                  <Pie
+                    data={chartData}
+                    dataKey="value"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label
+                  >
+                    {chartData.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <ReTooltip content={<CustomTooltip />} />
+                </PieChart>
+              </Paper>
+
+              <Paper sx={{ p: 2, width: '60%' }}>
+                <Typography variant="h6" gutterBottom>Items by Category</Typography>
+                <List>
+                  {catDist.map((category, index) => (
+                    <React.Fragment key={category.name}>
+                      <ListItem>
+                        <Box sx={{ width: '100%' }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                            {category.name}
+                          </Typography>
+                          <List sx={{ pl: 2 }}>
+                            {category.items?.map((item) => (
+                              <ListItem key={item.id} sx={{ py: 0.5 }}>
+                                <ListItemText
+                                  primary={`${item.name} - Quantity: ${item.quantity}`}
+                                />
+                              </ListItem>
+                            ))}
+                          </List>
+                        </Box>
+                      </ListItem>
+                      {index < catDist.length - 1 && <Divider />}
+                    </React.Fragment>
                   ))}
-                </Pie>
-                <ReTooltip content={<CustomTooltip />} />
-              </PieChart>
-            </Paper>
+                </List>
+              </Paper>
+            </Box>
           )}
 
           {['stock', 'value', 'movement'].includes(reportType) &&
