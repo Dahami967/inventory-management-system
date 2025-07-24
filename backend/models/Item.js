@@ -55,8 +55,40 @@ class Item {
     }
 
     static async delete(id) {
-        const [result] = await db.execute('DELETE FROM items WHERE id = ?', [id]);
-        return result.affectedRows > 0;
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
+            
+            // First check if the item exists
+            const [item] = await connection.execute('SELECT id FROM items WHERE id = ?', [id]);
+            if (!item || item.length === 0) {
+                throw new Error('Item not found');
+            }
+
+            // Check if the item has been issued
+            const [issuedItems] = await connection.execute(
+                'SELECT id FROM issued_items WHERE itemId = ?',
+                [id]
+            );
+
+            if (issuedItems && issuedItems.length > 0) {
+                throw new Error('Cannot delete this item because it has been issued. Please remove all issue records first.');
+            }
+
+            // Delete any related records in stock_history first (although ON DELETE CASCADE should handle this)
+            await connection.execute('DELETE FROM stock_history WHERE itemId = ?', [id]);
+            
+            // Delete from items table
+            const [result] = await connection.execute('DELETE FROM items WHERE id = ?', [id]);
+            
+            await connection.commit();
+            return result.affectedRows > 0;
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
     }
 
     static async updateById(id, updates) {

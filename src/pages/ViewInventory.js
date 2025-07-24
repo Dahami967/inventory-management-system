@@ -66,17 +66,26 @@ const ViewInventory = () => {
 
   const handleDelete = async () => {
     try {
-      await itemService.deleteItem(itemToDelete.id);
-      setSnackbar({
-        open: true,
-        message: 'Item deleted successfully',
-        severity: 'success',
-      });
-      fetchItems(); // Refresh the list
+      if (!itemToDelete || !itemToDelete.id) {
+        throw new Error('Invalid item selected for deletion');
+      }
+      
+      const response = await itemService.deleteItem(itemToDelete.id);
+      if (response) {
+        setSnackbar({
+          open: true,
+          message: 'Item deleted successfully',
+          severity: 'success',
+        });
+        await fetchItems(); // Refresh the list
+      } else {
+        throw new Error('Failed to delete item');
+      }
     } catch (error) {
+      console.error('Delete error:', error);
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || 'Error deleting item',
+        message: error.response?.data?.message || error.message || 'Error deleting item',
         severity: 'error',
       });
     } finally {
